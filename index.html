@@ -28,6 +28,8 @@
       list-style: none;
       display: flex;
       gap: 2rem;
+      margin: 0;
+      padding: 0;
     }
     nav a {
       text-decoration: none;
@@ -63,12 +65,21 @@
       cursor: pointer;
       font-weight: bold;
       border-radius: 8px;
+      transition: background-color 0.3s ease;
+    }
+    .btn:hover:not(:disabled) {
+      background-color: #3aa7e0;
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
     .learn-more-text {
       margin-top: 1rem;
       max-width: 600px;
       margin-left: auto;
       margin-right: auto;
+      color: #ddd;
     }
     footer {
       background: #111;
@@ -88,7 +99,7 @@
       justify-content: center;
       gap: 3rem;
       flex-wrap: wrap;
-      margin-top: 2rem;
+      margin-top: 1rem;
     }
     .vote-box {
       background: #1a1a1a;
@@ -102,6 +113,7 @@
       height: 180px;
       background: red;
       margin-bottom: 1rem;
+      border-radius: 8px;
     }
     .vote-bar-container {
       width: 20px;
@@ -110,19 +122,22 @@
       border: 2px solid #4ac1ff;
       position: relative;
       margin-top: 0.5rem;
+      border-radius: 8px;
+      background: #222;
     }
     .vote-bar {
       background: #4ac1ff;
       position: absolute;
       bottom: 0;
       width: 100%;
+      height: 0%;
       transition: height 0.3s ease;
-      height: 0;
+      border-radius: 6px 6px 0 0;
     }
-    #countdown {
-      font-size: 1.4rem;
-      margin-top: 2rem;
+    #countdown-timer {
       font-weight: bold;
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
       color: #4ac1ff;
     }
   </style>
@@ -159,7 +174,7 @@
 
     <section class="section voting">
       <h2>Vote for the Next Item</h2>
-
+      <div id="countdown-timer">Loading countdown...</div>
       <div class="vote-options">
         <div class="vote-box" data-id="option1">
           <div class="vote-image"></div>
@@ -189,8 +204,6 @@
           <button class="btn" onclick="vote('option3')">Vote</button>
         </div>
       </div>
-
-      <div id="countdown">Voting ends in: --</div>
     </section>
   </main>
 
@@ -203,143 +216,24 @@
     }
   </script>
 
+  <!-- Import voting.js module -->
+  <script type="module" src="voting.js"></script>
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyD3ezc0LYpQ7GMloz0iWhOh83AY1wAJu3I",
-      authDomain: "arcfall-voting.firebaseapp.com",
-      projectId: "arcfall-voting",
-      storageBucket: "arcfall-voting.firebasestorage.app",
-      messagingSenderId: "520586455427",
-      appId: "1:520586455427:web:f0f32b7375b7e3310e6eb6",
-      measurementId: "G-RL160YZ9PY"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    import { listenForVotes, updateVotesUI, enableVoteButtons, startCountdown } from './voting.js';
 
     const itemIds = ["option1", "option2", "option3"];
-    const voteDeadline = new Date("2025-07-10T00:00:00-05:00").getTime();
 
-    const voteButtons = document.querySelectorAll(".vote-box button");
-    const countdownEl = document.getElementById("countdown");
+    // Start the voting countdown timer display
+    startCountdown("countdown-timer");
 
-    function disableButtons() {
-      voteButtons.forEach(btn => btn.disabled = true);
-    }
+    // Enable or disable voting buttons depending on vote status and time
+    enableVoteButtons();
 
-    function enableButtons() {
-      if (!localStorage.getItem("voted")) {
-        voteButtons.forEach(btn => btn.disabled = false);
-      }
-    }
+    // Listen for live updates to votes and update UI accordingly
+    listenForVotes(itemIds);
 
-    function updateCountdown() {
-      const now = Date.now();
-      const diff = voteDeadline - now;
-      if (diff <= 0) {
-        countdownEl.textContent = "Voting is now closed.";
-        disableButtons();
-        return false;
-      }
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-      const minutes = Math.floor((diff / (1000 * 60)) % 60);
-      const seconds = Math.floor((diff / 1000) % 60);
-      countdownEl.textContent = `Voting ends in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
-      return true;
-    }
-
-    async function updateUI(id, count, total) {
-      const pct = total === 0 ? 0 : Math.round((count / total) * 100);
-      document.getElementById(`bar-${id}`).style.height = pct + "%";
-      document.getElementById(`percent-${id}`).innerText = pct + "%";
-    }
-
-    async function refreshVotes() {
-      let total = 0;
-      const counts = {};
-      for (const id of itemIds) {
-        const snap = await getDoc(doc(db, "votes", id));
-        counts[id] = snap.exists() ? snap.data().count || 0 : 0;
-        total += counts[id];
-      }
-      for (const id of itemIds) {
-        updateUI(id, counts[id], total);
-      }
-      checkVoteGoal(counts);
-    }
-
-    function checkVoteGoal(votes) {
-      if (!votes) return;
-      for (const [id, count] of Object.entries(votes)) {
-        if (count >= 500 && !localStorage.getItem(`notified-${id}`)) {
-          localStorage.setItem(`notified-${id}`, "true");
-          sendNotification(`${id} reached 500 votes!`);
-        }
-      }
-    }
-
-    function sendNotification(message) {
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification("Arcfall Voting", { body: message });
-      } else if ("Notification" in window && Notification.permission !== "denied") {
-        Notification.requestPermission().then(permission => {
-          if (permission === "granted") {
-            new Notification("Arcfall Voting", { body: message });
-          }
-        });
-      }
-    }
-
-    async function vote(itemId) {
-      if (localStorage.getItem("voted")) {
-        alert("You already voted!");
-        return;
-      }
-      if (!updateCountdown()) {
-        alert("Voting has ended!");
-        return;
-      }
-
-      const ref = doc(db, "votes", itemId);
-      const snap = await getDoc(ref);
-      const count = snap.exists() ? snap.data().count || 0 : 0;
-      await setDoc(ref, { count: count + 1 });
-      localStorage.setItem("voted", itemId);
-      disableButtons();
-      refreshVotes();
-    }
-    window.vote = vote;
-
-    // Initialize buttons disabled state
-    if (localStorage.getItem("voted")) {
-      disableButtons();
-    } else if (updateCountdown()) {
-      enableButtons();
-    } else {
-      disableButtons();
-    }
-
-    // Listen for live updates to votes
-    itemIds.forEach(id => {
-      const ref = doc(db, "votes", id);
-      onSnapshot(ref, () => {
-        refreshVotes();
-      });
-    });
-
-    // Update countdown every second
-    setInterval(() => {
-      const stillOpen = updateCountdown();
-      if (!stillOpen) disableButtons();
-    }, 1000);
-
-    if ("Notification" in window) {
-      Notification.requestPermission();
-    }
+    // Initialize UI bars with current votes from Firestore
+    updateVotesUI(itemIds);
   </script>
 </body>
 </html>
