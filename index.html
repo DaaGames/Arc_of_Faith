@@ -43,30 +43,39 @@
       <div class="vote-options">
         <div class="vote-box" data-id="option1">
           <div class="vote-image"></div>
-          <p>Option 1</p>
+          <p>New Phoenix Armor Set</p>
           <div class="vote-bar-container">
             <div class="vote-bar" id="bar-option1"></div>
           </div>
           <p id="percent-option1">0%</p>
-          <button class="btn" onclick="vote('option1')">Vote</button>
+          <button class="btn" data-option="option1">Vote</button>
         </div>
         <div class="vote-box" data-id="option2">
           <div class="vote-image"></div>
-          <p>Option 2</p>
+          <p>Dungeon Map Expansion</p>
           <div class="vote-bar-container">
             <div class="vote-bar" id="bar-option2"></div>
           </div>
           <p id="percent-option2">0%</p>
-          <button class="btn" onclick="vote('option2')">Vote</button>
+          <button class="btn" data-option="option2">Vote</button>
         </div>
         <div class="vote-box" data-id="option3">
           <div class="vote-image"></div>
-          <p>Option 3</p>
+          <p>Mount Customization</p>
           <div class="vote-bar-container">
             <div class="vote-bar" id="bar-option3"></div>
           </div>
           <p id="percent-option3">0%</p>
-          <button class="btn" onclick="vote('option3')">Vote</button>
+          <button class="btn" data-option="option3">Vote</button>
+        </div>
+        <div class="vote-box" data-id="option4">
+          <div class="vote-image"></div>
+          <p>Fishing Mini-Game</p>
+          <div class="vote-bar-container">
+            <div class="vote-bar" id="bar-option4"></div>
+          </div>
+          <p id="percent-option4">0%</p>
+          <button class="btn" data-option="option4">Vote</button>
         </div>
       </div>
     </section>
@@ -81,23 +90,59 @@
     }
   </script>
 
-  <script type="module" src="voting.js"></script>
   <script type="module">
-    import { listenForVotes, updateVotesUI, enableVoteButtons, startCountdown } from './voting.js';
+    import {
+      initializeAndGetVotingStatus,
+      getVotingOptionsData,
+      castVote,
+      setVoteButtonsState,
+      updateVoteUI,
+      startCountdown,
+      listenForVoteChanges
+    } from './voting.js';
 
-    const itemIds = ["option1", "option2", "option3"];
+    async function setupVoting() {
+      // Initialize voting session and get status
+      const status = await initializeAndGetVotingStatus();
 
-    // Start the voting countdown timer display
-    startCountdown("countdown-timer");
+      // Update countdown timer UI
+      startCountdown("countdown-timer", status.remainingMs, () => {
+        setVoteButtonsState(false);
+      });
 
-    // Enable or disable voting buttons depending on vote status and time
-    enableVoteButtons();
+      // Enable/disable vote buttons depending on session status & if user voted
+      setVoteButtonsState(status.isActive);
 
-    // Listen for live updates to votes and update UI accordingly
-    listenForVotes(itemIds);
+      // Update votes UI initially
+      const optionsData = await getVotingOptionsData();
+      updateVoteUI(optionsData);
 
-    // Initialize UI bars with current votes from Firestore
-    updateVotesUI(itemIds);
+      // Listen for live vote updates and update UI on change
+      listenForVoteChanges(updateVoteUI);
+
+      // Attach click handlers for voting buttons
+      document.querySelectorAll(".vote-box button").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          if (localStorage.getItem("votedOption")) {
+            alert("You already voted!");
+            return;
+          }
+          const optionId = btn.getAttribute("data-option");
+          if (!optionId) return;
+
+          const success = await castVote(optionId);
+          if (success) {
+            localStorage.setItem("votedOption", optionId);
+            setVoteButtonsState(false);
+            alert("Thanks for voting!");
+          } else {
+            alert("Voting has ended or there was an error.");
+          }
+        });
+      });
+    }
+
+    setupVoting();
   </script>
 </body>
 </html>
