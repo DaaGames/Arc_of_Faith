@@ -117,6 +117,13 @@
       bottom: 0;
       width: 100%;
       transition: height 0.3s ease;
+      height: 0;
+    }
+    #countdown {
+      font-size: 1.4rem;
+      margin-top: 2rem;
+      font-weight: bold;
+      color: #4ac1ff;
     }
   </style>
 </head>
@@ -152,6 +159,7 @@
 
     <section class="section voting">
       <h2>Vote for the Next Item</h2>
+
       <div class="vote-options">
         <div class="vote-box" data-id="option1">
           <div class="vote-image"></div>
@@ -181,6 +189,8 @@
           <button class="btn" onclick="vote('option3')">Vote</button>
         </div>
       </div>
+
+      <div id="countdown">Voting ends in: --</div>
     </section>
   </main>
 
@@ -209,48 +219,67 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+
     const itemIds = ["option1", "option2", "option3"];
+    const voteDeadline = new Date("2025-07-10T00:00:00-05:00").getTime();
 
-    async function vote(itemId) {
-      if (localStorage.getItem("voted")) return alert("You already voted!");
+    const voteButtons = document.querySelectorAll(".vote-box button");
+    const countdownEl = document.getElementById("countdown");
 
-      const ref = doc(db, "votes", itemId);
-      const snap = await getDoc(ref);
-      const count = snap.exists() ? snap.data().count || 0 : 0;
-      await setDoc(ref, { count: count + 1 });
-      localStorage.setItem("voted", itemId);
-      document.querySelectorAll(".vote-box button").forEach(btn => btn.disabled = true);
+    function disableButtons() {
+      voteButtons.forEach(btn => btn.disabled = true);
     }
-    window.vote = vote;
 
-    itemIds.forEach(id => {
-      const ref = doc(db, "votes", id);
-      onSnapshot(ref, snapshot => {
-        if (!snapshot.exists()) return;
-        const data = snapshot.data();
-        const count = data.count || 0;
-        updateUI(id, count);
+    function enableButtons() {
+      if (!localStorage.getItem("voted")) {
+        voteButtons.forEach(btn => btn.disabled = false);
+      }
+    }
 
+    function updateCountdown() {
+      const now = Date.now();
+      const diff = voteDeadline - now;
+      if (diff <= 0) {
+        countdownEl.textContent = "Voting is now closed.";
+        disableButtons();
+        return false;
+      }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+      countdownEl.textContent = `Voting ends in: ${days}d ${hours}h ${minutes}m ${seconds}s`;
+      return true;
+    }
+
+    async function updateUI(id, count, total) {
+      const pct = total === 0 ? 0 : Math.round((count / total) * 100);
+      document.getElementById(`bar-${id}`).style.height = pct + "%";
+      document.getElementById(`percent-${id}`).innerText = pct + "%";
+    }
+
+    async function refreshVotes() {
+      let total = 0;
+      const counts = {};
+      for (const id of itemIds) {
+        const snap = await getDoc(doc(db, "votes", id));
+        counts[id] = snap.exists() ? snap.data().count || 0 : 0;
+        total += counts[id];
+      }
+      for (const id of itemIds) {
+        updateUI(id, counts[id], total);
+      }
+      checkVoteGoal(counts);
+    }
+
+    function checkVoteGoal(votes) {
+      if (!votes) return;
+      for (const [id, count] of Object.entries(votes)) {
         if (count >= 500 && !localStorage.getItem(`notified-${id}`)) {
           localStorage.setItem(`notified-${id}`, "true");
           sendNotification(`${id} reached 500 votes!`);
         }
-      });
-    });
-
-    function updateUI(id, count) {
-      let total = 0;
-      const counts = {};
-
-      Promise.all(itemIds.map(async i => {
-        const snap = await getDoc(doc(db, "votes", i));
-        counts[i] = snap.exists() ? snap.data().count || 0 : 0;
-        total += counts[i];
-      })).then(() => {
-        const pct = total === 0 ? 0 : Math.round((counts[id] / total) * 100);
-        document.getElementById(`bar-${id}`).style.height = pct + "%";
-        document.getElementById(`percent-${id}`).innerText = pct + "%";
-      });
+      }
     }
 
     function sendNotification(message) {
@@ -264,6 +293,49 @@
         });
       }
     }
+
+    async function vote(itemId) {
+      if (localStorage.getItem("voted")) {
+        alert("You already voted!");
+        return;
+      }
+      if (!updateCountdown()) {
+        alert("Voting has ended!");
+        return;
+      }
+
+      const ref = doc(db, "votes", itemId);
+      const snap = await getDoc(ref);
+      const count = snap.exists() ? snap.data().count || 0 : 0;
+      await setDoc(ref, { count: count + 1 });
+      localStorage.setItem("voted", itemId);
+      disableButtons();
+      refreshVotes();
+    }
+    window.vote = vote;
+
+    // Initialize buttons disabled state
+    if (localStorage.getItem("voted")) {
+      disableButtons();
+    } else if (updateCountdown()) {
+      enableButtons();
+    } else {
+      disableButtons();
+    }
+
+    // Listen for live updates to votes
+    itemIds.forEach(id => {
+      const ref = doc(db, "votes", id);
+      onSnapshot(ref, () => {
+        refreshVotes();
+      });
+    });
+
+    // Update countdown every second
+    setInterval(() => {
+      const stillOpen = updateCountdown();
+      if (!stillOpen) disableButtons();
+    }, 1000);
 
     if ("Notification" in window) {
       Notification.requestPermission();
