@@ -14,36 +14,41 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Expose globally for HTML onclick
+const itemIds = ["option1", "option2", "option3"];
+
 window.vote = async function(itemId) {
-  // Prevent multiple votes using localStorage
   if (localStorage.getItem("voted-" + itemId)) {
     alert("You already voted for this item!");
     return;
   }
 
-  const itemRef = doc(db, "votes", itemId);
-  const docSnap = await getDoc(itemRef);
-
+  const ref = doc(db, "votes", itemId);
+  const snap = await getDoc(ref);
   let count = 0;
-  if (docSnap.exists()) {
-    count = docSnap.data().count || 0;
-  }
+  if (snap.exists()) count = snap.data().count || 0;
+  await setDoc(ref, { count: count + 1 });
 
-  await setDoc(itemRef, { count: count + 1 });
-  document.getElementById(`votes-${itemId}`).innerText = `${count + 1} votes`;
   localStorage.setItem("voted-" + itemId, "true");
+  updateAllBars();
 };
 
-window.addEventListener("DOMContentLoaded", async () => {
-  const items = document.querySelectorAll(".item");
-  for (const item of items) {
-    const id = item.getAttribute("data-id");
-    const itemRef = doc(db, "votes", id);
-    const docSnap = await getDoc(itemRef);
-    if (docSnap.exists()) {
-      const count = docSnap.data().count || 0;
-      document.getElementById(`votes-${id}`).innerText = `${count} votes`;
-    }
+async function updateAllBars() {
+  const counts = {};
+  let total = 0;
+
+  for (const id of itemIds) {
+    const ref = doc(db, "votes", id);
+    const snap = await getDoc(ref);
+    const count = snap.exists() ? snap.data().count || 0 : 0;
+    counts[id] = count;
+    total += count;
   }
-});
+
+  for (const id of itemIds) {
+    const percent = total === 0 ? 0 : Math.round((counts[id] / total) * 100);
+    document.getElementById(`bar-${id}`).style.height = percent + "%";
+    document.getElementById(`percent-${id}`).innerText = percent + "%";
+  }
+}
+
+window.addEventListener("DOMContentLoaded", updateAllBars);
