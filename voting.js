@@ -1,150 +1,223 @@
 // voting.js
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, setDoc,
-  onSnapshot, updateDoc, increment
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  increment,
+  collection,
+  getDocs,
+  query,
+  writeBatch,
+  serverTimestamp,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
-// Your actual Firebase config
+// --- YOUR FIREBASE CONFIG ---
+// Replace placeholders with your actual Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyD3ezc0LYpQ7GMloz0iWhOh83AY1wAJu3I",
   authDomain: "arcfall-voting.firebaseapp.com",
   projectId: "arcfall-voting",
-  storageBucket: "arcfall-voting.firebasestorage.app",
+  storageBucket: "arcfall-voting.appspot.com",
   messagingSenderId: "520586455427",
-  appId: "1:520586455427:web:f0f32b7375b7e3310e6eb6",
-  measurementId: "G-RL160YZ9PY"
+  appId: "1:520586455427:web:f0f32b7375b7e3310e6eb6"
 };
 
+// Initialize Firebase and Firestore
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const VOTE_COLLECTION = "votes";
-const VOTING_TIME_LIMIT_MS = 24 * 60 * 60 * 1000; // 24 hours voting window
-const voteEndTimeKey = "arcfall_vote_end_time";
-const userVotedKey = "arcfall_user_voted";
+// Firestore collection and document IDs
+const VOTES_COLLECTION = "votes";
+const METADATA_DOC_ID = "_metadata";
 
-// Initialize vote end time in localStorage if not present
-if (!localStorage.getItem(voteEndTimeKey)) {
-  const endTime = Date.now() + VOTING_TIME_LIMIT_MS;
-  localStorage.setItem(voteEndTimeKey, endTime);
-}
+// Voting options
+const DEFAULT_VOTING_OPTIONS = [
+  { id: "option1", name: "New Phoenix Armor Set" },
+  { id: "option2", name: "Dungeon Map Expansion" },
+  { id: "option3", name: "Mount Customization" },
+  { id: "option4", name: "Fishing Mini-Game" }
+];
 
-// Check if voting is still open
-export function isVotingOpen() {
-  const endTime = parseInt(localStorage.getItem(voteEndTimeKey), 10);
-  return Date.now() < endTime;
-}
+// Voting session duration (e.g., 24 hours)
+const VOTING_TIME_LIMIT_MS = 24 * 60 * 60 * 1000;
 
-// Disable all vote buttons
-export function disableVoteButtons() {
-  document.querySelectorAll(".vote-box button").forEach(btn => {
-    btn.disabled = true;
-  });
-}
+// --- Initialize or get voting session metadata ---
+export async function initializeAndGetVotingStatus() {
+  const metadataRef = doc(db, VOTES_COLLECTION, METADATA_DOC_ID);
+  const snap = await getDoc(metadataRef);
 
-// Enable vote buttons only if voting is open and user hasn't voted
-export function enableVoteButtons() {
-  if (!isVotingOpen() || localStorage.getItem(userVotedKey)) {
-    disableVoteButtons();
-  } else {
-    document.querySelectorAll(".vote-box button").forEach(btn => {
-      btn.disabled = false;
+  let startTime, endTime;
+
+  if (!snap.exists()) {
+    // No session yet - start a new voting session
+    const now = new Date();
+    const future = new Date(now.getTime() + VOTING_TIME_LIMIT_MS);
+
+    await setDoc(metadataRef, {
+      startTime: serverTimestamp(),
+      endTime: endTime = future
     });
+
+    // Re-fetch to get server timestamp for startTime
+    const freshSnap = await getDoc(metadataRef);
+    if (!freshSnap.exists() || !freshSnap.data().startTime) {
+      throw new Error("Failed to initialize voting session metadata.");
+    }
+    startTime = freshSnap.data().startTime.toDate();
+    endTime = freshSnap.data().endTime.toDate();
+
+    // Initialize voting options counts in batch
+    await initializeVotingOptions();
+  } else {
+    const data = snap.data();
+    startTime = data.startTime.toDate();
+    endTime = data.endTime.toDate();
   }
+
+  const nowMs = Date.now();
+  const remainingMs = Math.max(0, endTime.getTime() - nowMs);
+  const isActive = remainingMs > 0;
+
+  return { isActive, remainingMs, endTime };
 }
 
-// Vote for an itemId
-export async function vote(itemId) {
-  if (!isVotingOpen()) {
-    alert("Voting has ended!");
-    disableVoteButtons();
-    return;
+// Helper to initialize voting options counts to 0
+async function initializeVotingOptions() {
+  const batch = writeBatch(db);
+  for (const option of DEFAULT_VOTING_OPTIONS) {
+    const optionRef = doc(db, VOTES_COLLECTION, option.id);
+    batch.set(optionRef, { name: option.name, count: 0 }, { merge: true });
   }
-  if (localStorage.getItem(userVotedKey)) {
-    alert("You already voted!");
-    disableVoteButtons();
-    return;
-  }
+  await batch.commit();
+}
 
-  const ref = doc(db, VOTE_COLLECTION, itemId);
+// Get current votes for all options
+export async function getVotingOptionsData() {
+  const options = [];
+  const q = query(collection(db, VOTES_COLLECTION));
+  const snapshot = await getDocs(q);
+  snapshot.forEach(docSnap => {
+    if (docSnap.id !== METADATA_DOC_ID) {
+      const data = docSnap.data();
+      options.push({
+        id: docSnap.id,
+        name: data.name || docSnap.id,
+        count: data.count || 0
+      });
+    }
+  });
+
+  // Ensure all default options present, sorted
+  return DEFAULT_VOTING_OPTIONS.map(defOpt => {
+    const found = options.find(o => o.id === defOpt.id);
+    return found || { id: defOpt.id, name: defOpt.name, count: 0 };
+  }).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+// Cast a vote atomically (returns true if success, false if voting ended)
+export async function castVote(optionId) {
+  const status = await initializeAndGetVotingStatus();
+  if (!status.isActive) return false;
 
   try {
-    await updateDoc(ref, { count: increment(1) });
+    const optionRef = doc(db, VOTES_COLLECTION, optionId);
+    await updateDoc(optionRef, { count: increment(1) });
+    return true;
   } catch (err) {
-    // If document doesn't exist yet, create it
-    if (err.code === "not-found" || err.message.includes("No document to update")) {
-      await setDoc(ref, { count: 1 });
-    } else {
-      alert("Error voting: " + err.message);
-      return;
-    }
+    console.error("Error casting vote:", err);
+    return false;
   }
-
-  localStorage.setItem(userVotedKey, itemId);
-  disableVoteButtons();
 }
 
-// Listen for vote updates and update UI live
-export function listenForVotes(itemIds) {
-  itemIds.forEach(id => {
-    const ref = doc(db, VOTE_COLLECTION, id);
-    onSnapshot(ref, snapshot => {
-      if (!snapshot.exists()) return;
-      updateVotesUI(itemIds);
-    });
-  });
+// Reset voting session - deletes metadata and votes (admin/testing only)
+export async function resetVotingSession() {
+  const batch = writeBatch(db);
+  const metaRef = doc(db, VOTES_COLLECTION, METADATA_DOC_ID);
+  batch.delete(metaRef);
+
+  const q = query(collection(db, VOTES_COLLECTION));
+  const snapshot = await getDocs(q);
+  snapshot.forEach(docSnap => batch.delete(docSnap.ref));
+
+  await batch.commit();
 }
 
-// Fetch votes and update UI bars and percentages
-export async function updateVotesUI(itemIds) {
-  let totalVotes = 0;
-  const counts = {};
+// --- UI Helpers ---
 
-  for (const id of itemIds) {
-    const snap = await getDoc(doc(db, VOTE_COLLECTION, id));
-    counts[id] = snap.exists() ? snap.data().count || 0 : 0;
-    totalVotes += counts[id];
-  }
-
-  itemIds.forEach(id => {
-    const pct = totalVotes === 0 ? 0 : Math.round((counts[id] / totalVotes) * 100);
+/**
+ * Updates vote bars and percentages live.
+ * Expects an array of voting option objects with id and count.
+ */
+export function updateVoteUI(votingOptions) {
+  const totalVotes = votingOptions.reduce((sum, o) => sum + o.count, 0) || 1;
+  votingOptions.forEach(({ id, count }) => {
+    const pct = Math.round((count / totalVotes) * 100);
     const bar = document.getElementById(`bar-${id}`);
     const percentText = document.getElementById(`percent-${id}`);
-
     if (bar) bar.style.height = pct + "%";
-    if (percentText) percentText.innerText = pct + "%";
+    if (percentText) percentText.textContent = pct + "%";
   });
 }
 
-// Countdown timer display
-export function startCountdown(displayElementId) {
-  const displayEl = document.getElementById(displayElementId);
-
-  function update() {
-    const endTime = parseInt(localStorage.getItem(voteEndTimeKey), 10);
-    const now = Date.now();
-    const diff = endTime - now;
-
-    if (diff <= 0) {
-      displayEl.innerText = "Voting ended";
-      disableVoteButtons();
-      clearInterval(intervalId);
-      return;
-    }
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const secs = Math.floor((diff % (1000 * 60)) / 1000);
-
-    displayEl.innerText = `Voting ends in ${hours}h ${mins}m ${secs}s`;
-  }
-
-  update();
-  const intervalId = setInterval(update, 1000);
-  return intervalId;
+/**
+ * Enables or disables voting buttons based on session active status
+ * and whether user already voted (stored in localStorage)
+ */
+export function setVoteButtonsState(isActive) {
+  const buttons = document.querySelectorAll(".vote-box button");
+  const voted = localStorage.getItem("votedOption");
+  buttons.forEach(btn => {
+    btn.disabled = !isActive || Boolean(voted);
+  });
 }
 
-// Expose vote globally for button onclick in index.html
-window.vote = vote;
+/**
+ * Starts countdown timer UI in a container with given ID.
+ * Calls callback when countdown reaches zero.
+ */
+export function startCountdown(containerId, remainingMs, onEndCallback) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  function updateTimer() {
+    if (remainingMs <= 0) {
+      container.textContent = "Voting has ended!";
+      if (onEndCallback) onEndCallback();
+      return;
+    }
+    const seconds = Math.floor((remainingMs / 1000) % 60);
+    const minutes = Math.floor((remainingMs / (1000 * 60)) % 60);
+    const hours = Math.floor((remainingMs / (1000 * 60 * 60)));
+    container.textContent = `Voting ends in ${hours}h ${minutes}m ${seconds}s`;
+    remainingMs -= 1000;
+    setTimeout(updateTimer, 1000);
+  }
+  updateTimer();
+}
+
+/**
+ * Starts live listening for vote changes and updates UI accordingly.
+ * Returns a function to unsubscribe the listener.
+ */
+export function listenForVoteChanges(onUpdate) {
+  const q = query(collection(db, VOTES_COLLECTION));
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const options = [];
+    snapshot.forEach(docSnap => {
+      if (docSnap.id !== METADATA_DOC_ID) {
+        const data = docSnap.data();
+        options.push({
+          id: docSnap.id,
+          name: data.name,
+          count: data.count || 0
+        });
+      }
+    });
+    onUpdate(options);
+  });
+  return unsubscribe;
+}
