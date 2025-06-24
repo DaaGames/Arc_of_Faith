@@ -3,39 +3,35 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
 import {
   getFirestore, doc, getDoc, setDoc,
-  onSnapshot, updateDoc, increment, collection, getDocs
+  onSnapshot, updateDoc, increment
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
-// (Optional) Import Firebase AI Logic when ready:
-// import { getGenerativeModel } from "firebase-ai";
-
-// Firebase config - replace with your actual config
+// Your actual Firebase config
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyD3ezc0LYpQ7GMloz0iWhOh83AY1wAJu3I",
   authDomain: "arcfall-voting.firebaseapp.com",
   projectId: "arcfall-voting",
-  storageBucket: "arcfall-voting.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID",
+  storageBucket: "arcfall-voting.firebasestorage.app",
+  messagingSenderId: "520586455427",
+  appId: "1:520586455427:web:f0f32b7375b7e3310e6eb6",
+  measurementId: "G-RL160YZ9PY"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Voting state and constants
 const VOTE_COLLECTION = "votes";
-const VOTING_TIME_LIMIT_MS = 24 * 60 * 60 * 1000; // 24 hours (example)
+const VOTING_TIME_LIMIT_MS = 24 * 60 * 60 * 1000; // 24 hours voting window
 const voteEndTimeKey = "arcfall_vote_end_time";
 const userVotedKey = "arcfall_user_voted";
 
-// Initialize vote end time if not set
+// Initialize vote end time in localStorage if not present
 if (!localStorage.getItem(voteEndTimeKey)) {
   const endTime = Date.now() + VOTING_TIME_LIMIT_MS;
   localStorage.setItem(voteEndTimeKey, endTime);
 }
 
-// Utility: Check if voting is still open
+// Check if voting is still open
 export function isVotingOpen() {
   const endTime = parseInt(localStorage.getItem(voteEndTimeKey), 10);
   return Date.now() < endTime;
@@ -48,7 +44,7 @@ export function disableVoteButtons() {
   });
 }
 
-// Enable vote buttons (if voting open and user not voted)
+// Enable vote buttons only if voting is open and user hasn't voted
 export function enableVoteButtons() {
   if (!isVotingOpen() || localStorage.getItem(userVotedKey)) {
     disableVoteButtons();
@@ -59,7 +55,7 @@ export function enableVoteButtons() {
   }
 }
 
-// Vote function - increments vote count in Firestore
+// Vote for an itemId
 export async function vote(itemId) {
   if (!isVotingOpen()) {
     alert("Voting has ended!");
@@ -75,10 +71,9 @@ export async function vote(itemId) {
   const ref = doc(db, VOTE_COLLECTION, itemId);
 
   try {
-    // Atomically increment votes
     await updateDoc(ref, { count: increment(1) });
   } catch (err) {
-    // If doc missing, create it with count 1
+    // If document doesn't exist yet, create it
     if (err.code === "not-found" || err.message.includes("No document to update")) {
       await setDoc(ref, { count: 1 });
     } else {
@@ -91,7 +86,7 @@ export async function vote(itemId) {
   disableVoteButtons();
 }
 
-// Listen for live updates to votes and update UI bars
+// Listen for vote updates and update UI live
 export function listenForVotes(itemIds) {
   itemIds.forEach(id => {
     const ref = doc(db, VOTE_COLLECTION, id);
@@ -102,19 +97,17 @@ export function listenForVotes(itemIds) {
   });
 }
 
-// Update vote bars & percentages UI based on current counts
+// Fetch votes and update UI bars and percentages
 export async function updateVotesUI(itemIds) {
   let totalVotes = 0;
   const counts = {};
 
-  // Fetch counts for all items
   for (const id of itemIds) {
     const snap = await getDoc(doc(db, VOTE_COLLECTION, id));
     counts[id] = snap.exists() ? snap.data().count || 0 : 0;
     totalVotes += counts[id];
   }
 
-  // Update UI bars and text
   itemIds.forEach(id => {
     const pct = totalVotes === 0 ? 0 : Math.round((counts[id] / totalVotes) * 100);
     const bar = document.getElementById(`bar-${id}`);
@@ -125,7 +118,7 @@ export async function updateVotesUI(itemIds) {
   });
 }
 
-// Countdown timer logic
+// Countdown timer display
 export function startCountdown(displayElementId) {
   const displayEl = document.getElementById(displayElementId);
 
@@ -153,5 +146,5 @@ export function startCountdown(displayElementId) {
   return intervalId;
 }
 
-// Helper to export vote function globally (for button onclick)
+// Expose vote globally for button onclick in index.html
 window.vote = vote;
