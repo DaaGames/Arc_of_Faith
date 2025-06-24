@@ -12,7 +12,6 @@
       background: #000;
       color: #fff;
     }
-
     nav {
       background: #111;
       padding: 1rem 2rem;
@@ -20,49 +19,41 @@
       justify-content: space-between;
       align-items: center;
     }
-
     .logo {
       font-family: 'Bebas Neue', cursive;
       font-size: 2rem;
       color: #4ac1ff;
     }
-
     nav ul {
       list-style: none;
       display: flex;
       gap: 2rem;
     }
-
     nav a {
       text-decoration: none;
       color: white;
       font-weight: bold;
     }
-
     header {
       text-align: center;
       padding: 4rem 1rem;
       background: linear-gradient(to right, #4ac1ff, #c8b273);
     }
-
     header h1 {
       font-size: 4rem;
       font-family: 'Bebas Neue', cursive;
       margin: 0;
       color: #000;
     }
-
     .tagline {
       font-size: 1.2rem;
       margin-top: 0.5rem;
       color: #222;
     }
-
-    main .section {
+    .section {
       padding: 2rem;
       text-align: center;
     }
-
     .btn {
       background-color: #4ac1ff;
       border: none;
@@ -73,14 +64,12 @@
       font-weight: bold;
       border-radius: 8px;
     }
-
     .learn-more-text {
       margin-top: 1rem;
       max-width: 600px;
       margin-left: auto;
       margin-right: auto;
     }
-
     footer {
       background: #111;
       text-align: center;
@@ -88,15 +77,12 @@
       font-size: 0.9rem;
       color: #aaa;
     }
-
-    /* Voting Section */
     .voting {
       background: #111;
       color: white;
       text-align: center;
       padding: 3rem 1rem;
     }
-
     .vote-options {
       display: flex;
       justify-content: center;
@@ -104,7 +90,6 @@
       flex-wrap: wrap;
       margin-top: 2rem;
     }
-
     .vote-box {
       background: #1a1a1a;
       padding: 1rem;
@@ -112,14 +97,12 @@
       width: 180px;
       box-shadow: 0 0 10px rgba(0,0,0,0.4);
     }
-
     .vote-image {
       width: 100%;
       height: 180px;
       background: red;
       margin-bottom: 1rem;
     }
-
     .vote-bar-container {
       width: 20px;
       height: 100px;
@@ -128,7 +111,6 @@
       position: relative;
       margin-top: 0.5rem;
     }
-
     .vote-bar {
       background: #4ac1ff;
       position: absolute;
@@ -139,8 +121,6 @@
   </style>
 </head>
 <body>
-
-  <!-- Navigation -->
   <nav>
     <div class="logo">ARCFALL</div>
     <ul>
@@ -151,13 +131,11 @@
     </ul>
   </nav>
 
-  <!-- Header -->
   <header>
     <h1>ARCFALL</h1>
     <p class="tagline">A Biblical Adventure Awaits</p>
   </header>
 
-  <!-- Main Content -->
   <main>
     <section class="section">
       <h2>Season 1: The Ark Awakens</h2>
@@ -172,7 +150,6 @@
       </div>
     </section>
 
-    <!-- Voting Section -->
     <section class="section voting">
       <h2>Vote for the Next Item</h2>
       <div class="vote-options">
@@ -180,27 +157,25 @@
           <div class="vote-image"></div>
           <p>Option 1</p>
           <div class="vote-bar-container">
-            <div class="vote-bar" id="bar-option1" style="height: 0%"></div>
+            <div class="vote-bar" id="bar-option1"></div>
           </div>
           <p id="percent-option1">0%</p>
           <button class="btn" onclick="vote('option1')">Vote</button>
         </div>
-
         <div class="vote-box" data-id="option2">
           <div class="vote-image"></div>
           <p>Option 2</p>
           <div class="vote-bar-container">
-            <div class="vote-bar" id="bar-option2" style="height: 0%"></div>
+            <div class="vote-bar" id="bar-option2"></div>
           </div>
           <p id="percent-option2">0%</p>
           <button class="btn" onclick="vote('option2')">Vote</button>
         </div>
-
         <div class="vote-box" data-id="option3">
           <div class="vote-image"></div>
           <p>Option 3</p>
           <div class="vote-bar-container">
-            <div class="vote-bar" id="bar-option3" style="height: 0%"></div>
+            <div class="vote-bar" id="bar-option3"></div>
           </div>
           <p id="percent-option3">0%</p>
           <button class="btn" onclick="vote('option3')">Vote</button>
@@ -209,12 +184,8 @@
     </section>
   </main>
 
-  <!-- Footer -->
-  <footer>
-    Daa Games
-  </footer>
+  <footer>Daa Games</footer>
 
-  <!-- Learn More Toggle -->
   <script>
     function toggleLearnMore() {
       const text = document.getElementById("learnMoreText");
@@ -222,59 +193,81 @@
     }
   </script>
 
-  <!-- Firebase Voting -->
   <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
-  // (Removed analytics import to avoid ESM issues)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
-  const firebaseConfig = { /* your config */ };
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3ezc0LYpQ7GMloz0iWhOh83AY1wAJu3I",
+      authDomain: "arcfall-voting.firebaseapp.com",
+      projectId: "arcfall-voting",
+      storageBucket: "arcfall-voting.firebasestorage.app",
+      messagingSenderId: "520586455427",
+      appId: "1:520586455427:web:f0f32b7375b7e3310e6eb6",
+      measurementId: "G-RL160YZ9PY"
+    };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const itemIds = ["option1", "option2", "option3"];
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const itemIds = ["option1", "option2", "option3"];
 
-  window.vote = async function(itemId) {
-    if (localStorage.getItem("voted")) {
-      alert("You've already voted!");
-      return;
+    async function vote(itemId) {
+      if (localStorage.getItem("voted")) return alert("You already voted!");
+
+      const ref = doc(db, "votes", itemId);
+      const snap = await getDoc(ref);
+      const count = snap.exists() ? snap.data().count || 0 : 0;
+      await setDoc(ref, { count: count + 1 });
+      localStorage.setItem("voted", itemId);
+      document.querySelectorAll(".vote-box button").forEach(btn => btn.disabled = true);
+    }
+    window.vote = vote;
+
+    itemIds.forEach(id => {
+      const ref = doc(db, "votes", id);
+      onSnapshot(ref, snapshot => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
+        const count = data.count || 0;
+        updateUI(id, count);
+
+        if (count >= 500 && !localStorage.getItem(`notified-${id}`)) {
+          localStorage.setItem(`notified-${id}`, "true");
+          sendNotification(`${id} reached 500 votes!`);
+        }
+      });
+    });
+
+    function updateUI(id, count) {
+      let total = 0;
+      const counts = {};
+
+      Promise.all(itemIds.map(async i => {
+        const snap = await getDoc(doc(db, "votes", i));
+        counts[i] = snap.exists() ? snap.data().count || 0 : 0;
+        total += counts[i];
+      })).then(() => {
+        const pct = total === 0 ? 0 : Math.round((counts[id] / total) * 100);
+        document.getElementById(`bar-${id}`).style.height = pct + "%";
+        document.getElementById(`percent-${id}`).innerText = pct + "%";
+      });
     }
 
-    const ref = doc(db, "votes", itemId);
-    const snap = await getDoc(ref);
-    const count = snap.exists() ? snap.data().count || 0 : 0;
-    await setDoc(ref, { count: count + 1 });
-
-    localStorage.setItem("voted", itemId);
-    document.querySelectorAll('.vote-box button').forEach(btn => btn.disabled = true);
-    document.querySelector(`.vote-box[data-id="${itemId}"] button`).classList.add('voted');
-
-    updateAllBars();
-  };
-
-  async function updateAllBars() {
-    let total = 0;
-    const counts = {};
-    for (const id of itemIds) {
-      const snap = await getDoc(doc(db, "votes", id));
-      counts[id] = snap.exists() ? snap.data().count || 0 : 0;
-      total += counts[id];
+    function sendNotification(message) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Arcfall Voting", { body: message });
+      } else if ("Notification" in window && Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+          if (permission === "granted") {
+            new Notification("Arcfall Voting", { body: message });
+          }
+        });
+      }
     }
-    for (const id of itemIds) {
-      const pct = total === 0 ? 0 : Math.round((counts[id] / total) * 100);
-      document.getElementById(`bar-${id}`).style.height = pct + "%";
-      document.getElementById(`percent-${id}`).innerText = pct + "%";
-    }
-  }
 
-  window.addEventListener("DOMContentLoaded", () => {
-    updateAllBars();
-
-    if (localStorage.getItem("voted")) {
-      // Immediately disable buttons on page load if already voted
-      document.querySelectorAll('.vote-box button').forEach(btn => btn.disabled = true);
-      const votedId = localStorage.getItem("voted");
-      document.querySelector(`.vote-box[data-id="${votedId}"] button`).classList.add('voted');
+    if ("Notification" in window) {
+      Notification.requestPermission();
     }
-  });
-</script>
+  </script>
+</body>
+</html>
