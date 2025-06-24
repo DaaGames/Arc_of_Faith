@@ -1,4 +1,3 @@
-// voting.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
 import {
   getFirestore,
@@ -12,11 +11,11 @@ import {
   query,
   writeBatch,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
+  Timestamp
 } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
-// --- YOUR FIREBASE CONFIG ---
-// Replace placeholders with your actual Firebase config
+// --- FIREBASE CONFIG ---
 const firebaseConfig = {
   apiKey: "AIzaSyD3ezc0LYpQ7GMloz0iWhOh83AY1wAJu3I",
   authDomain: "arcfall-voting.firebaseapp.com",
@@ -26,15 +25,12 @@ const firebaseConfig = {
   appId: "1:520586455427:web:f0f32b7375b7e3310e6eb6"
 };
 
-// Initialize Firebase and Firestore
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Firestore collection and document IDs
 const VOTES_COLLECTION = "votes";
 const METADATA_DOC_ID = "_metadata";
 
-// Voting options
 const DEFAULT_VOTING_OPTIONS = [
   { id: "option1", name: "New Phoenix Armor Set" },
   { id: "option2", name: "Dungeon Map Expansion" },
@@ -42,7 +38,6 @@ const DEFAULT_VOTING_OPTIONS = [
   { id: "option4", name: "Fishing Mini-Game" }
 ];
 
-// Voting session duration (e.g., 24 hours)
 const VOTING_TIME_LIMIT_MS = 24 * 60 * 60 * 1000;
 
 // --- Initialize or get voting session metadata ---
@@ -53,13 +48,11 @@ export async function initializeAndGetVotingStatus() {
   let startTime, endTime;
 
   if (!snap.exists()) {
-    // No session yet - start a new voting session
     const now = new Date();
     const future = new Date(now.getTime() + VOTING_TIME_LIMIT_MS);
-
     await setDoc(metadataRef, {
       startTime: serverTimestamp(),
-      endTime: endTime = future
+      endTime: Timestamp.fromDate(future)
     });
 
     // Re-fetch to get server timestamp for startTime
@@ -67,15 +60,14 @@ export async function initializeAndGetVotingStatus() {
     if (!freshSnap.exists() || !freshSnap.data().startTime) {
       throw new Error("Failed to initialize voting session metadata.");
     }
-    startTime = freshSnap.data().startTime.toDate();
-    endTime = freshSnap.data().endTime.toDate();
+    startTime = freshSnap.data().startTime.toDate ? freshSnap.data().startTime.toDate() : freshSnap.data().startTime;
+    endTime = freshSnap.data().endTime.toDate ? freshSnap.data().endTime.toDate() : freshSnap.data().endTime;
 
-    // Initialize voting options counts in batch
     await initializeVotingOptions();
   } else {
     const data = snap.data();
-    startTime = data.startTime.toDate();
-    endTime = data.endTime.toDate();
+    startTime = data.startTime.toDate ? data.startTime.toDate() : data.startTime;
+    endTime = data.endTime.toDate ? data.endTime.toDate() : data.endTime;
   }
 
   const nowMs = Date.now();
