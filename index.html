@@ -32,9 +32,7 @@
 
     <section class="section">
       <button class="btn" onclick="toggleLearnMore()">Learn More</button>
-      <div id="learnMoreText" class="learn-more-text" style="display: none;">
-        Arcfall is a fast-paced third-person shooter set in a world touched by the lost Arc Engine. Each season is inspired by a different biblical story and features a race to control the world-altering Arc Engine—a device capable of bending reality itself.
-      </div>
+      <div id="learnMoreText" class="learn-more-text">Arcfall is a fast-paced third-person shooter set in a world touched by the lost Arc Engine. Each season is inspired by a different biblical story and features a race to control the world-altering Arc Engine—a device capable of bending reality itself.</div>
     </section>
 
     <section class="section voting">
@@ -86,7 +84,7 @@
   <script>
     function toggleLearnMore() {
       const text = document.getElementById("learnMoreText");
-      text.style.display = text.style.display === "none" ? "block" : "none";
+      text.classList.toggle("visible");
     }
   </script>
 
