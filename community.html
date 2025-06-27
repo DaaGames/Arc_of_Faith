@@ -6,6 +6,10 @@
   <title>Arc of Faith | Community</title>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Open+Sans&display=swap" rel="stylesheet">
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       font-family: 'Open Sans', sans-serif;
       background-color: #1A1A1A;
@@ -15,6 +19,7 @@
 
     nav {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
       background-color: #111;
@@ -31,6 +36,8 @@
       list-style: none;
       display: flex;
       gap: 25px;
+      margin: 0;
+      padding: 0;
     }
 
     nav ul li a {
@@ -54,12 +61,16 @@
     h1 {
       font-family: 'Bebas Neue', cursive;
       font-size: 120px;
-      margin-bottom: 10px;
+      margin: 0 0 10px;
+    }
+
+    main {
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 0 20px;
     }
 
     .community-section {
-      max-width: 700px;
-      margin: 40px auto;
       background-color: #2a2a2a;
       padding: 30px;
       border-radius: 10px;
@@ -67,10 +78,12 @@
 
     .community-section h2 {
       color: #C8B273;
+      margin-top: 0;
     }
 
     .community-section p {
       margin-top: 10px;
+      line-height: 1.6;
     }
 
     footer {
@@ -99,19 +112,20 @@
     <p>Join the Arc of Faith community and be part of the story.</p>
   </header>
 
-  <div class="community-section">
-    <h2>Hi</h2>
-    <p> </p>
-  </div>
+  <main>
+    <div class="community-section">
+      <h2>Welcome to the Community</h2>
+      <p>Here you can connect with other players, share your experiences, and follow updates about the world of Arc of Faith.</p>
+    </div>
+  </main>
   
   <footer>
-    <p class="copyright">
+    <p>
       © <span class="year">2025</span> Daa Games. All rights reserved.
     </p>
   </footer>
 
   <script>
-    // Dynamically set the year in the copyright
     document.querySelector('.year').textContent = new Date().getFullYear();
   </script>
 
