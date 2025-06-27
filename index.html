@@ -35,49 +35,20 @@
       <div id="learnMoreText" class="learn-more-text">Arc of Faith is a fast-paced third-person shooter set in a world touched by the lost Arc Engine. Each season is inspired by a different biblical story and features a race to control the world-altering Arc Engine—a device capable of bending reality itself.</div>
     </section>
 
-    <section class="section voting">
-      <h2>Vote for the Next Item</h2>
-      <div id="countdown-timer">Loading countdown...</div>
-      <div class="vote-options">
-        <div class="vote-box" data-id="option1">
-          <div class="vote-image"></div>
-          <p>New Phoenix Armor Set</p>
-          <div class="vote-bar-container">
-            <div class="vote-bar" id="bar-option1"></div>
-          </div>
-          <p id="percent-option1">0%</p>
-          <button class="btn" data-option="option1">Vote</button>
-        </div>
-        <div class="vote-box" data-id="option2">
-          <div class="vote-image"></div>
-          <p>Dungeon Map Expansion</p>
-          <div class="vote-bar-container">
-            <div class="vote-bar" id="bar-option2"></div>
-          </div>
-          <p id="percent-option2">0%</p>
-          <button class="btn" data-option="option2">Vote</button>
-        </div>
-        <div class="vote-box" data-id="option3">
-          <div class="vote-image"></div>
-          <p>Mount Customization</p>
-          <div class="vote-bar-container">
-            <div class="vote-bar" id="bar-option3"></div>
-          </div>
-          <p id="percent-option3">0%</p>
-          <button class="btn" data-option="option3">Vote</button>
-        </div>
-        <div class="vote-box" data-id="option4">
-          <div class="vote-image"></div>
-          <p>Fishing Mini-Game</p>
-          <div class="vote-bar-container">
-            <div class="vote-bar" id="bar-option4"></div>
-          </div>
-          <p id="percent-option4">0%</p>
-          <button class="btn" data-option="option4">Vote</button>
-        </div>
-      </div>
-    </section>
   </main>
 
+  <footer>
+    <p class="copyright">
+      © <span class="year">2025</span> Daa Games. All rights reserved.
+    </p>
+    <p>
+      <a href="/privacy-policy">Privacy Policy</a> | <a href="/terms-of-service">Terms of Service</a>
+    </p>
+  </footer>
+
+  <script>
+    // Dynamically set the year in the copyright
+    document.querySelector('.year').textContent = new Date().getFullYear();
+  </script>
 </body>
 </html>
